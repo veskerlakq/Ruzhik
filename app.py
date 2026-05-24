@@ -26,11 +26,12 @@ def init_db():
                  (id INTEGER PRIMARY KEY AUTOINCREMENT,
                   username TEXT UNIQUE, 
                   password TEXT, 
-                  avatar TEXT DEFAULT '/avatars/default.png')''')
+                  avatar TEXT DEFAULT '')''')
     c.execute('''CREATE TABLE IF NOT EXISTS posts 
                  (id INTEGER PRIMARY KEY AUTOINCREMENT,
                   user_id INTEGER, 
                   username TEXT, 
+                  avatar TEXT,
                   content TEXT, 
                   created_at TIMESTAMP)''')
     c.execute('''CREATE TABLE IF NOT EXISTS messages 
@@ -70,7 +71,9 @@ AUTH_HTML = '''
             display: flex;
             justify-content: center;
             align-items: center;
+            transition: 0.3s;
         }
+        body.dark { background: linear-gradient(135deg, #0f0f1a 0%, #1a1a2e 100%); }
         .container {
             background: white;
             border-radius: 30px;
@@ -79,6 +82,7 @@ AUTH_HTML = '''
             box-shadow: 0 20px 60px rgba(0,0,0,0.3);
             text-align: center;
         }
+        body.dark .container { background: #1e1e2e; }
         .logo { font-size: 48px; margin-bottom: 20px; }
         h1 {
             background: linear-gradient(135deg, #667eea, #764ba2);
@@ -95,6 +99,7 @@ AUTH_HTML = '''
             border-radius: 15px;
             font-size: 16px;
         }
+        body.dark input { background: #2a2a3e; color: white; border-color: #3a3a4e; }
         .btn {
             width: 100%;
             padding: 15px;
@@ -106,6 +111,7 @@ AUTH_HTML = '''
             cursor: pointer;
         }
         .switch { margin-top: 20px; color: #666; cursor: pointer; }
+        body.dark .switch { color: #ccc; }
         .switch span { color: #667eea; font-weight: bold; }
         .error { color: red; margin-top: 10px; }
     </style>
@@ -129,6 +135,10 @@ AUTH_HTML = '''
     <div id="errorMsg" class="error"></div>
 </div>
 <script>
+    if (localStorage.getItem('theme') === 'dark') {
+        document.body.classList.add('dark');
+    }
+    
     async function login() {
         const username = document.getElementById('loginUsername').value;
         const password = document.getElementById('loginPassword').value;
@@ -216,10 +226,22 @@ INDEX_HTML = '''
             justify-content: space-between;
             flex-wrap: wrap;
             gap: 10px;
+            align-items: center;
         }
         body.dark .nav { background: #1e1e2e; }
         .nav a, .nav span { margin: 0 10px; text-decoration: none; color: #333; cursor: pointer; }
         body.dark .nav a, body.dark .nav span { color: #ccc; }
+        .nav-user {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .nav-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            object-fit: cover;
+        }
         .btn {
             background: linear-gradient(135deg, #667eea, #764ba2);
             color: white;
@@ -239,7 +261,26 @@ INDEX_HTML = '''
             justify-content: space-between;
         }
         body.dark .post { border-color: #333; }
-        .username { font-weight: bold; }
+        .post-left {
+            display: flex;
+            gap: 12px;
+            flex: 1;
+        }
+        .post-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            object-fit: cover;
+        }
+        .post-content {
+            flex: 1;
+        }
+        .username {
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
         .date { color: #999; font-size: 12px; margin-top: 5px; }
         textarea {
             width: 100%;
@@ -358,7 +399,7 @@ INDEX_HTML = '''
 <div class="container">
     <div class="nav">
         <span class="gradient-text">🐹 Ruzhik</span>
-        <div>
+        <div style="display: flex; align-items: center; flex-wrap: wrap; gap: 10px;">
             <a onclick="openChatList()" class="nav-item" id="chatNavBtn">
                 Чати
                 <span id="chatNotification" style="display:none;" class="notification-badge">!</span>
@@ -368,7 +409,10 @@ INDEX_HTML = '''
                 <span id="requestNotification" style="display:none;" class="notification-badge">!</span>
             </a>
             <a href="/settings" class="nav-item">Налаштування</a>
-            <span class="gradient-text">{{ username }}</span>
+            <div class="nav-user">
+                <img id="navAvatar" class="nav-avatar" src="" style="display:none;">
+                <span class="gradient-text" id="navUsername"></span>
+            </div>
             <button onclick="toggleTheme()" style="background:none; border:none; font-size:18px; cursor:pointer;" id="themeBtn">🌙</button>
         </div>
     </div>
@@ -419,7 +463,19 @@ INDEX_HTML = '''
 </div>
 
 <script>
-    let currentChatUser = null, chatInterval = null, currentUser = '{{ username }}';
+    let currentChatUser = null, chatInterval = null, currentUser = '';
+    
+    async function loadUserInfo() {
+        const res = await fetch('/api/user_info');
+        const user = await res.json();
+        currentUser = user.username;
+        document.getElementById('navUsername').innerText = user.username;
+        if (user.avatar && user.avatar !== '') {
+            const avatarImg = document.getElementById('navAvatar');
+            avatarImg.src = user.avatar + '?t=' + Date.now();
+            avatarImg.style.display = 'block';
+        }
+    }
 
     function toggleTheme() {
         document.body.classList.toggle('dark');
@@ -428,10 +484,14 @@ INDEX_HTML = '''
         else btn.textContent = '🌙';
         localStorage.setItem('theme', document.body.classList.contains('dark') ? 'dark' : 'light');
     }
-    if (localStorage.getItem('theme') === 'dark') {
-        document.body.classList.add('dark');
-        document.getElementById('themeBtn').textContent = '☀️';
-    }
+    
+    (function() {
+        if (localStorage.getItem('theme') === 'dark') {
+            document.body.classList.add('dark');
+            const btn = document.getElementById('themeBtn');
+            if (btn) btn.textContent = '☀️';
+        }
+    })();
 
     function showPrivacy() { document.getElementById('privacyModal').style.display = 'flex'; }
     function closePrivacy() { document.getElementById('privacyModal').style.display = 'none'; }
@@ -477,11 +537,16 @@ INDEX_HTML = '''
         if (posts.length === 0) { feedDiv.innerHTML = 'Немає дописів'; return; }
         feedDiv.innerHTML = posts.map(p => `
             <div class="post">
-                <div>
-                    <div class="username gradient-text">${escapeHtml(p.username)}</div>
-                    <div>${escapeHtml(p.content)}</div>
-                    <div class="date">${p.date}</div>
-                    ${currentUser && p.username !== currentUser ? `<button class="btn btn-sm btn-warning" onclick="sendFriendRequest('${p.username}')">➕ В друзі</button>` : ''}
+                <div class="post-left">
+                    ${p.avatar && p.avatar !== '' ? `<img class="post-avatar" src="${p.avatar}">` : `<div class="post-avatar" style="background: linear-gradient(135deg, #667eea, #764ba2); display: flex; align-items: center; justify-content: center; color: white; font-size: 18px;">🐹</div>`}
+                    <div class="post-content">
+                        <div class="username">
+                            <span class="gradient-text">${escapeHtml(p.username)}</span>
+                            ${currentUser && p.username !== currentUser && !p.is_friend ? `<button class="btn btn-sm btn-warning" onclick="sendFriendRequest('${p.username}')">➕ В друзі</button>` : ''}
+                        </div>
+                        <div>${escapeHtml(p.content)}</div>
+                        <div class="date">${p.date}</div>
+                    </div>
                 </div>
                 ${p.username === currentUser ? `<button class="btn btn-danger btn-sm" onclick="deletePost(${p.id})">🗑</button>` : ''}
             </div>
@@ -495,6 +560,7 @@ INDEX_HTML = '''
             body: JSON.stringify({to_user: to})
         });
         if (res.ok) alert('Запит надіслано');
+        else if (res.status === 400) alert('Вже друзі або запит вже надіслано');
     }
 
     async function openChatList() {
@@ -530,6 +596,7 @@ INDEX_HTML = '''
     async function acceptReq(from) {
         await fetch('/api/accept_request', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({from_user: from})});
         openRequests();
+        loadFeed();
     }
     async function rejectReq(from) {
         await fetch('/api/reject_request', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({from_user: from})});
@@ -575,6 +642,7 @@ INDEX_HTML = '''
 
     function escapeHtml(t) { const div = document.createElement('div'); div.textContent = t; return div.innerHTML; }
 
+    loadUserInfo();
     loadFeed();
     setInterval(loadFeed, 5000);
     setInterval(checkNotifications, 3000);
@@ -597,7 +665,9 @@ SETTINGS_HTML = '''
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             min-height: 100vh;
             padding: 20px;
+            transition: 0.3s;
         }
+        body.dark { background: linear-gradient(135deg, #0f0f1a 0%, #1a1a2e 100%); }
         .container { max-width: 500px; margin: 50px auto; }
         .card {
             background: white;
@@ -647,7 +717,7 @@ SETTINGS_HTML = '''
         <div class="profile-header">
             <img id="avatar" class="profile-avatar" src="">
             <div>
-                <h3 id="usernameDisplay" class="gradient-text">{{ username }}</h3>
+                <h3 id="usernameDisplay" class="gradient-text"></h3>
                 <input type="file" id="avatarFile" accept="image/*" style="display:none;">
                 <button class="btn" style="padding:8px; font-size:14px;" onclick="document.getElementById('avatarFile').click()">Змінити аватар</button>
             </div>
@@ -662,11 +732,17 @@ SETTINGS_HTML = '''
     </div>
 </div>
 <script>
+    if (localStorage.getItem('theme') === 'dark') {
+        document.body.classList.add('dark');
+    }
+    
     async function loadUserInfo() {
         const res = await fetch('/api/user_info');
         const user = await res.json();
         document.getElementById('usernameDisplay').innerText = user.username;
-        document.getElementById('avatar').src = user.avatar + '?t=' + Date.now();
+        if (user.avatar && user.avatar !== '') {
+            document.getElementById('avatar').src = user.avatar + '?t=' + Date.now();
+        }
     }
 
     document.getElementById('avatarFile')?.addEventListener('change', async (e) => {
@@ -676,8 +752,10 @@ SETTINGS_HTML = '''
         formData.append('avatar', file);
         const res = await fetch('/api/upload_avatar', {method: 'POST', body: formData});
         const data = await res.json();
-        if (data.url) document.getElementById('avatar').src = data.url + '?t=' + Date.now();
-        else alert('Помилка завантаження');
+        if (data.url) {
+            document.getElementById('avatar').src = data.url + '?t=' + Date.now();
+            alert('Аватар змінено!');
+        } else alert('Помилка завантаження');
     });
 
     async function updateUsername() {
@@ -790,7 +868,7 @@ def api_register():
     c = conn.cursor()
     try:
         c.execute("INSERT INTO users (username, password, avatar) VALUES (?, ?, ?)",
-                  (username, password, '/avatars/default.png'))
+                  (username, password, ''))
         conn.commit()
         session['user_id'] = c.lastrowid
         return jsonify({'success': True})
@@ -813,7 +891,7 @@ def api_user_info():
     c.execute("SELECT username, avatar FROM users WHERE id = ?", (session['user_id'],))
     user = c.fetchone()
     conn.close()
-    return jsonify({'username': user[0], 'avatar': user[1]})
+    return jsonify({'username': user[0], 'avatar': user[1] if user[1] else ''})
 
 @app.route('/api/update_username', methods=['POST'])
 def api_update_username():
@@ -826,8 +904,17 @@ def api_update_username():
     conn = sqlite3.connect('social.db')
     c = conn.cursor()
     try:
+        c.execute("SELECT avatar FROM users WHERE id = ?", (session['user_id'],))
+        avatar = c.fetchone()[0]
         c.execute("UPDATE users SET username = ? WHERE id = ?", (new_username, session['user_id']))
         c.execute("UPDATE posts SET username = ? WHERE user_id = ?", (new_username, session['user_id']))
+        c.execute("UPDATE posts SET avatar = ? WHERE user_id = ?", (avatar, session['user_id']))
+        c.execute("UPDATE messages SET from_user = ? WHERE from_user = (SELECT username FROM users WHERE id = ?)", (new_username, session['user_id']))
+        c.execute("UPDATE messages SET to_user = ? WHERE to_user = (SELECT username FROM users WHERE id = ?)", (new_username, session['user_id']))
+        c.execute("UPDATE friend_requests SET from_user = ? WHERE from_user = (SELECT username FROM users WHERE id = ?)", (new_username, session['user_id']))
+        c.execute("UPDATE friend_requests SET to_user = ? WHERE to_user = (SELECT username FROM users WHERE id = ?)", (new_username, session['user_id']))
+        c.execute("UPDATE friends SET user1 = ? WHERE user1 = (SELECT username FROM users WHERE id = ?)", (new_username, session['user_id']))
+        c.execute("UPDATE friends SET user2 = ? WHERE user2 = (SELECT username FROM users WHERE id = ?)", (new_username, session['user_id']))
         conn.commit()
         conn.close()
         return jsonify({'success': True})
@@ -851,6 +938,7 @@ def api_upload_avatar():
     conn = sqlite3.connect('social.db')
     c = conn.cursor()
     c.execute("UPDATE users SET avatar = ? WHERE id = ?", (avatar_url, session['user_id']))
+    c.execute("UPDATE posts SET avatar = ? WHERE user_id = ?", (avatar_url, session['user_id']))
     conn.commit()
     conn.close()
     return jsonify({'url': avatar_url})
@@ -870,10 +958,10 @@ def api_post():
         return jsonify({'error': 'Пустий допис'}), 400
     conn = sqlite3.connect('social.db')
     c = conn.cursor()
-    c.execute("SELECT username FROM users WHERE id = ?", (session['user_id'],))
-    username = c.fetchone()[0]
-    c.execute("INSERT INTO posts (user_id, username, content, created_at) VALUES (?, ?, ?, ?)",
-              (session['user_id'], username, content, datetime.now().strftime("%Y-%m-%d %H:%M:%S")))
+    c.execute("SELECT username, avatar FROM users WHERE id = ?", (session['user_id'],))
+    username, avatar = c.fetchone()
+    c.execute("INSERT INTO posts (user_id, username, avatar, content, created_at) VALUES (?, ?, ?, ?, ?)",
+              (session['user_id'], username, avatar if avatar else '', content, datetime.now().strftime("%Y-%m-%d %H:%M:%S")))
     conn.commit()
     conn.close()
     return jsonify({'success': True})
@@ -893,10 +981,23 @@ def api_delete_post():
 
 @app.route('/api/feed')
 def api_feed():
+    if 'user_id' not in session:
+        return jsonify([])
     conn = sqlite3.connect('social.db')
     c = conn.cursor()
-    c.execute("SELECT id, username, content, created_at FROM posts ORDER BY created_at DESC LIMIT 50")
-    posts = [{"id": row[0], "username": row[1], "content": row[2], "date": row[3]} for row in c.fetchall()]
+    c.execute("SELECT username FROM users WHERE id = ?", (session['user_id'],))
+    current_user = c.fetchone()[0]
+    
+    c.execute("SELECT user1, user2 FROM friends WHERE user1 = ? OR user2 = ?", (current_user, current_user))
+    friends = []
+    for row in c.fetchall():
+        friends.append(row[1] if row[0] == current_user else row[0])
+    
+    c.execute("SELECT id, username, avatar, content, created_at FROM posts ORDER BY created_at DESC LIMIT 50")
+    posts = []
+    for row in c.fetchall():
+        is_friend = row[1] in friends
+        posts.append({"id": row[0], "username": row[1], "avatar": row[2] if row[2] else '', "content": row[3], "date": row[4], "is_friend": is_friend})
     conn.close()
     return jsonify(posts)
 
@@ -938,6 +1039,19 @@ def api_send_request():
     c = conn.cursor()
     c.execute("SELECT username FROM users WHERE id = ?", (session['user_id'],))
     from_user = c.fetchone()[0]
+    
+    c.execute("SELECT * FROM friends WHERE (user1 = ? AND user2 = ?) OR (user1 = ? AND user2 = ?)", 
+              (from_user, to_user, to_user, from_user))
+    if c.fetchone():
+        conn.close()
+        return jsonify({'error': 'Вже друзі'}), 400
+    
+    c.execute("SELECT * FROM friend_requests WHERE from_user = ? AND to_user = ? AND status = 'pending'", 
+              (from_user, to_user))
+    if c.fetchone():
+        conn.close()
+        return jsonify({'error': 'Запит вже надіслано'}), 400
+    
     try:
         c.execute("INSERT INTO friend_requests (from_user, to_user, read) VALUES (?, ?, 0)", (from_user, to_user))
         conn.commit()
