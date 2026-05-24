@@ -56,21 +56,12 @@ def init_db():
 
 init_db()
 
-# Создаем дефолтную аватарку если нет
-#if not os.path.exists('avatars/default.png'):
-#    from PIL import Image, ImageDraw
-
-#    img = Image.new('RGB', (80, 80), color='#667eea')
-#    draw = ImageDraw.Draw(img)
-#    draw.text((25, 25), '🐹', fill='white')
-#    img.save('avatars/default.png')
-
 # ========== HTML ==========
 AUTH_HTML = '''
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Ruzhik - Вход</title>
+    <title>Ruzhik - Вхід</title>
     <meta charset="utf-8">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -124,18 +115,18 @@ AUTH_HTML = '''
 <body>
 <div class="container">
     <div class="logo">🐹</div>
-    <h1 id="title">Вход в Ruzhik</h1>
+    <h1 id="title">Вхід до Ruzhik</h1>
     <div id="loginForm">
-        <input type="text" id="loginUsername" placeholder="Никнейм">
+        <input type="text" id="loginUsername" placeholder="Нікнейм">
         <input type="password" id="loginPassword" placeholder="Пароль">
-        <button class="btn" onclick="login()">Войти</button>
-        <div class="switch" onclick="showRegister()">Нет аккаунта? <span>Зарегистрироваться</span></div>
+        <button class="btn" onclick="login()">Увійти</button>
+        <div class="switch" onclick="showRegister()">Немає акаунта? <span>Зареєструватися</span></div>
     </div>
     <div id="registerForm" style="display:none;">
-        <input type="text" id="regUsername" placeholder="Никнейм">
+        <input type="text" id="regUsername" placeholder="Нікнейм">
         <input type="password" id="regPassword" placeholder="Пароль">
-        <button class="btn" onclick="register()">Зарегистрироваться</button>
-        <div class="switch" onclick="showLogin()">Уже есть аккаунт? <span>Войти</span></div>
+        <button class="btn" onclick="register()">Зареєструватися</button>
+        <div class="switch" onclick="showLogin()">Вже є акаунт? <span>Увійти</span></div>
     </div>
     <div id="errorMsg" class="error"></div>
 </div>
@@ -156,7 +147,7 @@ AUTH_HTML = '''
         const username = document.getElementById('regUsername').value;
         const password = document.getElementById('regPassword').value;
         if (username.length < 3) {
-            document.getElementById('errorMsg').innerText = 'Никнейм минимум 3 символа';
+            document.getElementById('errorMsg').innerText = 'Нікнейм мінімум 3 символи';
             return;
         }
         const res = await fetch('/api/register', {
@@ -171,13 +162,13 @@ AUTH_HTML = '''
     function showRegister() {
         document.getElementById('loginForm').style.display = 'none';
         document.getElementById('registerForm').style.display = 'block';
-        document.getElementById('title').innerText = 'Регистрация';
+        document.getElementById('title').innerText = 'Реєстрація';
         document.getElementById('errorMsg').innerText = '';
     }
     function showLogin() {
         document.getElementById('registerForm').style.display = 'none';
         document.getElementById('loginForm').style.display = 'block';
-        document.getElementById('title').innerText = 'Вход в Ruzhik';
+        document.getElementById('title').innerText = 'Вхід до Ruzhik';
         document.getElementById('errorMsg').innerText = '';
     }
 </script>
@@ -367,56 +358,56 @@ INDEX_HTML = '''
     <div class="nav">
         <span class="gradient-text">🐹 Ruzhik</span>
         <div>
-            <a onclick="openChatList()" class="gradient-text">Чаты</a>
-            <a onclick="openRequests()" class="gradient-text">Запросы</a>
-            <a href="/settings" class="gradient-text">Настройки</a>
+            <a onclick="openChatList()" class="gradient-text">Чати</a>
+            <a onclick="openRequests()" class="gradient-text">Запити</a>
+            <a href="/settings" class="gradient-text">Налаштування</a>
             <span class="gradient-text">{{ username }}</span>
             <button onclick="toggleTheme()" style="background:none; border:none; font-size:18px; cursor:pointer;" id="themeBtn">🌙</button>
         </div>
     </div>
 
     <div class="card">
-        <h3 class="gradient-text">Что нового?</h3>
-        <textarea id="postContent" rows="2" placeholder="Напиши что-нибудь..."></textarea>
-        <button class="btn" onclick="createPost()">Опубликовать</button>
+        <h3 class="gradient-text">Що нового?</h3>
+        <textarea id="postContent" rows="2" placeholder="Напиши щось..."></textarea>
+        <button class="btn" onclick="createPost()">Опублікувати</button>
     </div>
 
     <div class="card">
-        <h3 class="gradient-text">Лента</h3>
-        <div id="feed">Загрузка...</div>
+        <h3 class="gradient-text">Стрічка</h3>
+        <div id="feed">Завантаження...</div>
     </div>
 
-    <div class="privacy" onclick="showPrivacy()">Политика конфиденциальности</div>
+    <div class="privacy" onclick="showPrivacy()">Політика конфіденційності</div>
 </div>
 
 <div id="privacyModal" class="privacy-modal">
     <div class="privacy-content">
-        <h2 class="gradient-text">Политика конфиденциальности Ruzhik</h2>
-        <p><strong>1. Собираемые данные</strong><br>Только никнейм и пароль (хранятся в зашифрованном виде).</p>
-        <p><strong>2. Использование данных</strong><br>Никнейм отображается в ленте и чатах. Пароль только для входа.</p>
-        <p><strong>3. Передача третьим лицам</strong><br>Никакие данные не передаются.</p>
-        <p><strong>4. Ваши права</strong><br>Вы можете удалить свои посты, изменить никнейм и аватар.</p>
-        <p><strong>5. Безопасность</strong><br>Данные хранятся локально на сервере.</p>
-        <button class="btn" onclick="closePrivacy()" style="margin-top:20px;">Закрыть</button>
+        <h2 class="gradient-text">Політика конфіденційності Ruzhik</h2>
+        <p><strong>1. Дані, що збираються</strong><br>Тільки нікнейм та пароль (зберігаються у зашифрованому вигляді).</p>
+        <p><strong>2. Використання даних</strong><br>Нікнейм відображається у стрічці та чатах. Пароль тільки для входу.</p>
+        <p><strong>3. Передача третім особам</strong><br>Жодні дані не передаються.</p>
+        <p><strong>4. Ваші права</strong><br>Ви можете видалити свої дописи, змінити нікнейм та аватар.</p>
+        <p><strong>5. Безпека</strong><br>Дані зберігаються локально на сервері.</p>
+        <button class="btn" onclick="closePrivacy()" style="margin-top:20px;">Закрити</button>
     </div>
 </div>
 
 <div class="chat-modal" id="friendsModal">
-    <div class="chat-header"><span>Друзья</span><button onclick="closeModal('friendsModal')" style="background:none; border:none; color:white; cursor:pointer;">✖</button></div>
+    <div class="chat-header"><span>Друзі</span><button onclick="closeModal('friendsModal')" style="background:none; border:none; color:white; cursor:pointer;">✖</button></div>
     <div id="friendsList" style="padding:15px;"></div>
 </div>
 
 <div class="chat-modal" id="requestsModal">
-    <div class="chat-header"><span>Запросы в друзья</span><button onclick="closeModal('requestsModal')" style="background:none; border:none; color:white; cursor:pointer;">✖</button></div>
+    <div class="chat-header"><span>Запити в друзі</span><button onclick="closeModal('requestsModal')" style="background:none; border:none; color:white; cursor:pointer;">✖</button></div>
     <div id="requestsList" style="padding:15px;"></div>
 </div>
 
 <div class="chat-modal" id="chatModal">
-    <div class="chat-header"><span>Чат с <span id="chatWith"></span></span><button onclick="closeChat()" style="background:none; border:none; color:white; cursor:pointer;">✖</button></div>
+    <div class="chat-header"><span>Чат з <span id="chatWith"></span></span><button onclick="closeChat()" style="background:none; border:none; color:white; cursor:pointer;">✖</button></div>
     <div id="chatMessages" style="flex:1; overflow-y:auto; padding:15px;"></div>
     <div class="chat-input">
-        <input id="chatInput" placeholder="Сообщение..." onkeypress="if(event.key==='Enter') sendMsg()">
-        <button class="btn" onclick="sendMsg()">Отпр</button>
+        <input id="chatInput" placeholder="Повідомлення..." onkeypress="if(event.key==='Enter') sendMsg()">
+        <button class="btn" onclick="sendMsg()">Над.</button>
     </div>
 </div>
 
@@ -449,11 +440,11 @@ INDEX_HTML = '''
         if (res.ok) {
             document.getElementById('postContent').value = '';
             loadFeed();
-        } else alert('Ошибка');
+        } else alert('Помилка');
     }
 
     async function deletePost(id) {
-        if (!confirm('Удалить пост?')) return;
+        if (!confirm('Видалити допис?')) return;
         await fetch('/api/delete_post', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({post_id: id})});
         loadFeed();
     }
@@ -462,14 +453,14 @@ INDEX_HTML = '''
         const res = await fetch('/api/feed');
         const posts = await res.json();
         const feedDiv = document.getElementById('feed');
-        if (posts.length === 0) { feedDiv.innerHTML = 'Нет постов'; return; }
+        if (posts.length === 0) { feedDiv.innerHTML = 'Немає дописів'; return; }
         feedDiv.innerHTML = posts.map(p => `
             <div class="post">
                 <div>
                     <div class="username gradient-text">${escapeHtml(p.username)}</div>
                     <div>${escapeHtml(p.content)}</div>
                     <div class="date">${p.date}</div>
-                    ${currentUser && p.username !== currentUser ? `<button class="btn btn-sm btn-warning" onclick="sendFriendRequest('${p.username}')">➕ В друзья</button>` : ''}
+                    ${currentUser && p.username !== currentUser ? `<button class="btn btn-sm btn-warning" onclick="sendFriendRequest('${p.username}')">➕ В друзі</button>` : ''}
                 </div>
                 ${p.username === currentUser ? `<button class="btn btn-danger btn-sm" onclick="deletePost(${p.id})">🗑</button>` : ''}
             </div>
@@ -482,14 +473,14 @@ INDEX_HTML = '''
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({to_user: to})
         });
-        if (res.ok) alert('Запрос отправлен');
+        if (res.ok) alert('Запит надіслано');
     }
 
     async function openChatList() {
         const res = await fetch('/api/friends');
         const friends = await res.json();
         const list = document.getElementById('friendsList');
-        if (friends.length === 0) list.innerHTML = '<div style="text-align:center; padding:20px;">Нет друзей</div>';
+        if (friends.length === 0) list.innerHTML = '<div style="text-align:center; padding:20px;">Немає друзів</div>';
         else list.innerHTML = friends.map(f => `<div class="user-item" onclick="startChat('${f}')"><span>👤 ${f}</span></div>`).join('');
         document.getElementById('friendsModal').style.display = 'flex';
     }
@@ -498,13 +489,13 @@ INDEX_HTML = '''
         const res = await fetch('/api/friend_requests');
         const reqs = await res.json();
         const list = document.getElementById('requestsList');
-        if (reqs.length === 0) list.innerHTML = '<div style="text-align:center; padding:20px;">Нет запросов</div>';
+        if (reqs.length === 0) list.innerHTML = '<div style="text-align:center; padding:20px;">Немає запитів</div>';
         else list.innerHTML = reqs.map(r => `
             <div class="user-item">
                 <span>👤 ${r.from_user}</span>
                 <div>
-                    <button class="btn btn-sm btn-success" onclick="acceptReq('${r.from_user}')">Принять</button>
-                    <button class="btn btn-sm btn-danger" onclick="rejectReq('${r.from_user}')">Отклонить</button>
+                    <button class="btn btn-sm btn-success" onclick="acceptReq('${r.from_user}')">Прийняти</button>
+                    <button class="btn btn-sm btn-danger" onclick="rejectReq('${r.from_user}')">Відхилити</button>
                 </div>
             </div>
         `).join('');
@@ -570,7 +561,7 @@ SETTINGS_HTML = '''
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Настройки - Ruzhik</title>
+    <title>Налаштування - Ruzhik</title>
     <meta charset="utf-8">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -624,23 +615,23 @@ SETTINGS_HTML = '''
 <body>
 <div class="container">
     <div class="card">
-        <h2 class="gradient-text">Настройки профиля</h2>
+        <h2 class="gradient-text">Налаштування профілю</h2>
 
         <div class="profile-header">
             <img id="avatar" class="profile-avatar" src="">
             <div>
                 <h3 id="usernameDisplay" class="gradient-text">{{ username }}</h3>
                 <input type="file" id="avatarFile" accept="image/*" style="display:none;">
-                <button class="btn" style="padding:8px; font-size:14px;" onclick="document.getElementById('avatarFile').click()">Сменить аватар</button>
+                <button class="btn" style="padding:8px; font-size:14px;" onclick="document.getElementById('avatarFile').click()">Змінити аватар</button>
             </div>
         </div>
 
-        <input type="text" id="newUsername" placeholder="Новый никнейм">
-        <button class="btn" onclick="updateUsername()">Сменить никнейм</button>
+        <input type="text" id="newUsername" placeholder="Новий нікнейм">
+        <button class="btn" onclick="updateUsername()">Змінити нікнейм</button>
 
-        <button class="btn btn-danger" onclick="logout()">Выйти из аккаунта</button>
+        <button class="btn btn-danger" onclick="logout()">Вийти з акаунта</button>
 
-        <a href="/" class="btn" style="background:#999;">На главную</a>
+        <a href="/" class="btn" style="background:#999;">На головну</a>
     </div>
 </div>
 <script>
@@ -659,12 +650,12 @@ SETTINGS_HTML = '''
         const res = await fetch('/api/upload_avatar', {method: 'POST', body: formData});
         const data = await res.json();
         if (data.url) document.getElementById('avatar').src = data.url + '?t=' + Date.now();
-        else alert('Ошибка загрузки');
+        else alert('Помилка завантаження');
     });
 
     async function updateUsername() {
         const newUsername = document.getElementById('newUsername').value;
-        if (!newUsername || newUsername.length < 3) return alert('Минимум 3 символа');
+        if (!newUsername || newUsername.length < 3) return alert('Мінімум 3 символи');
         const res = await fetch('/api/update_username', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
@@ -672,7 +663,7 @@ SETTINGS_HTML = '''
         });
         const data = await res.json();
         if (data.success) {
-            alert('Никнейм изменён! Страница перезагрузится');
+            alert('Нікнейм змінено! Сторінка перезавантажиться');
             location.reload();
         } else alert(data.error);
     }
@@ -689,7 +680,7 @@ SETTINGS_HTML = '''
 '''
 
 
-# ========== РОУТЫ ==========
+# ========== РОУТИ ==========
 @app.route('/')
 def index():
     if 'user_id' not in session:
@@ -722,7 +713,7 @@ def api_login():
     if user:
         session['user_id'] = user[0]
         return jsonify({'success': True})
-    return jsonify({'success': False, 'error': 'Неверный никнейм или пароль'})
+    return jsonify({'success': False, 'error': 'Невірний нікнейм або пароль'})
 
 
 @app.route('/api/register', methods=['POST'])
@@ -731,7 +722,7 @@ def api_register():
     username = data.get('username')
     password = data.get('password')
     if len(username) < 3:
-        return jsonify({'success': False, 'error': 'Никнейм минимум 3 символа'})
+        return jsonify({'success': False, 'error': 'Нікнейм мінімум 3 символи'})
     conn = sqlite3.connect('social.db')
     c = conn.cursor()
     try:
@@ -741,7 +732,7 @@ def api_register():
         session['user_id'] = c.lastrowid
         return jsonify({'success': True})
     except:
-        return jsonify({'success': False, 'error': 'Никнейм уже занят'})
+        return jsonify({'success': False, 'error': 'Нікнейм вже зайнятий'})
     finally:
         conn.close()
 
@@ -771,7 +762,7 @@ def api_update_username():
     data = request.json
     new_username = data.get('username')
     if not new_username or len(new_username) < 3:
-        return jsonify({'error': 'Минимум 3 символа'}), 400
+        return jsonify({'error': 'Мінімум 3 символи'}), 400
     conn = sqlite3.connect('social.db')
     c = conn.cursor()
     try:
@@ -782,7 +773,7 @@ def api_update_username():
         return jsonify({'success': True})
     except:
         conn.close()
-        return jsonify({'error': 'Никнейм уже занят'}), 400
+        return jsonify({'error': 'Нікнейм вже зайнятий'}), 400
 
 
 @app.route('/api/upload_avatar', methods=['POST'])
@@ -819,7 +810,7 @@ def api_post():
     data = request.json
     content = censor(data.get('content', '')[:500])
     if not content.strip():
-        return jsonify({'error': 'Пустой пост'}), 400
+        return jsonify({'error': 'Пустий допис'}), 400
     conn = sqlite3.connect('social.db')
     c = conn.cursor()
     c.execute("SELECT username FROM users WHERE id = ?", (session['user_id'],))
@@ -976,6 +967,6 @@ if __name__ == '__main__':
     os.makedirs('avatars', exist_ok=True)
     print("=" * 50)
     print("🐹 RUZHIK запущена!")
-    print("Открой http://localhost:5000")
+    print("Відкрий http://localhost:5000")
     print("=" * 50)
     app.run(debug=True, host='0.0.0.0', port=5000)
