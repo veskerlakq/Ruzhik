@@ -14,12 +14,10 @@ os.makedirs('avatars', exist_ok=True)
 BAD_WORDS = ['хуй', 'пизда', 'бля', 'ебать', 'ебал', 'нахуй', 'пиздец', 'залупа', 'хуйня', 'мудак', 'говно', 'сука',
              'пидор', 'гандон']
 
-
 def censor(text):
     for word in BAD_WORDS:
         text = re.sub(re.escape(word), '***', text, flags=re.IGNORECASE)
     return text
-
 
 def init_db():
     conn = sqlite3.connect('social.db')
@@ -40,12 +38,14 @@ def init_db():
                   from_user TEXT, 
                   to_user TEXT, 
                   message TEXT, 
-                  created_at TIMESTAMP)''')
+                  created_at TIMESTAMP,
+                  read INTEGER DEFAULT 0)''')
     c.execute('''CREATE TABLE IF NOT EXISTS friend_requests 
                  (id INTEGER PRIMARY KEY AUTOINCREMENT,
                   from_user TEXT, 
                   to_user TEXT, 
-                  status TEXT DEFAULT 'pending')''')
+                  status TEXT DEFAULT 'pending',
+                  read INTEGER DEFAULT 0)''')
     c.execute('''CREATE TABLE IF NOT EXISTS friends 
                  (id INTEGER PRIMARY KEY AUTOINCREMENT,
                   user1 TEXT, 
@@ -53,10 +53,8 @@ def init_db():
     conn.commit()
     conn.close()
 
-
 init_db()
 
-# ========== HTML ==========
 AUTH_HTML = '''
 <!DOCTYPE html>
 <html>
@@ -250,28 +248,6 @@ INDEX_HTML = '''
             border: 1px solid #ddd;
             border-radius: 10px;
         }
-        .modal {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0,0,0,0.8);
-            justify-content: center;
-            align-items: center;
-            z-index: 2000;
-        }
-        .modal-content {
-            background: white;
-            padding: 30px;
-            border-radius: 20px;
-            max-width: 400px;
-            width: 90%;
-        }
-        body.dark .modal-content { background: #1e1e2e; }
-        .profile-header { display: flex; align-items: center; gap: 20px; margin-bottom: 20px; }
-        .profile-avatar { width: 80px; height: 80px; border-radius: 50%; object-fit: cover; }
         .privacy {
             text-align: center;
             font-size: 11px;
@@ -348,6 +324,31 @@ INDEX_HTML = '''
         }
         .user-item:hover { background: #f0f0f0; }
         body.dark .user-item:hover { background: #2a2a3e; }
+        .notification-badge {
+            position: absolute;
+            top: -8px;
+            right: -15px;
+            background: linear-gradient(135deg, #ff0000, #cc0000);
+            color: white;
+            border-radius: 50%;
+            padding: 2px 6px;
+            font-size: 10px;
+            font-weight: bold;
+            animation: pulse 1s infinite;
+        }
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+        }
+        .nav-item {
+            position: relative;
+            margin: 0 10px;
+            text-decoration: none;
+            color: #333;
+            cursor: pointer;
+        }
+        body.dark .nav-item { color: #ccc; }
         @media (max-width: 600px) {
             .chat-modal { width: 100%; right: 0; bottom: 0; border-radius: 20px 20px 0 0; }
         }
@@ -358,9 +359,15 @@ INDEX_HTML = '''
     <div class="nav">
         <span class="gradient-text">🐹 Ruzhik</span>
         <div>
-            <a onclick="openChatList()" class="gradient-text">Чати</a>
-            <a onclick="openRequests()" class="gradient-text">Запити</a>
-            <a href="/settings" class="gradient-text">Налаштування</a>
+            <a onclick="openChatList()" class="nav-item" id="chatNavBtn">
+                Чати
+                <span id="chatNotification" style="display:none;" class="notification-badge">!</span>
+            </a>
+            <a onclick="openRequests()" class="nav-item" id="requestsNavBtn">
+                Запити
+                <span id="requestNotification" style="display:none;" class="notification-badge">!</span>
+            </a>
+            <a href="/settings" class="nav-item">Налаштування</a>
             <span class="gradient-text">{{ username }}</span>
             <button onclick="toggleTheme()" style="background:none; border:none; font-size:18px; cursor:pointer;" id="themeBtn">🌙</button>
         </div>
@@ -429,6 +436,20 @@ INDEX_HTML = '''
     function showPrivacy() { document.getElementById('privacyModal').style.display = 'flex'; }
     function closePrivacy() { document.getElementById('privacyModal').style.display = 'none'; }
 
+    async function checkNotifications() {
+        const res = await fetch('/api/notifications');
+        const data = await res.json();
+        
+        const chatNotif = document.getElementById('chatNotification');
+        const reqNotif = document.getElementById('requestNotification');
+        
+        if (data.unread_messages > 0) chatNotif.style.display = 'inline-block';
+        else chatNotif.style.display = 'none';
+        
+        if (data.unread_requests > 0) reqNotif.style.display = 'inline-block';
+        else reqNotif.style.display = 'none';
+    }
+
     async function createPost() {
         const content = document.getElementById('postContent').value;
         if (!content.trim()) return alert('Введи текст');
@@ -477,15 +498,18 @@ INDEX_HTML = '''
     }
 
     async function openChatList() {
+        await fetch('/api/mark_messages_read', {method: 'POST'});
         const res = await fetch('/api/friends');
         const friends = await res.json();
         const list = document.getElementById('friendsList');
         if (friends.length === 0) list.innerHTML = '<div style="text-align:center; padding:20px;">Немає друзів</div>';
         else list.innerHTML = friends.map(f => `<div class="user-item" onclick="startChat('${f}')"><span>👤 ${f}</span></div>`).join('');
         document.getElementById('friendsModal').style.display = 'flex';
+        checkNotifications();
     }
 
     async function openRequests() {
+        await fetch('/api/mark_requests_read', {method: 'POST'});
         const res = await fetch('/api/friend_requests');
         const reqs = await res.json();
         const list = document.getElementById('requestsList');
@@ -500,6 +524,7 @@ INDEX_HTML = '''
             </div>
         `).join('');
         document.getElementById('requestsModal').style.display = 'flex';
+        checkNotifications();
     }
 
     async function acceptReq(from) {
@@ -552,6 +577,8 @@ INDEX_HTML = '''
 
     loadFeed();
     setInterval(loadFeed, 5000);
+    setInterval(checkNotifications, 3000);
+    checkNotifications();
 </script>
 </body>
 </html>
@@ -679,8 +706,6 @@ SETTINGS_HTML = '''
 </html>
 '''
 
-
-# ========== РОУТИ ==========
 @app.route('/')
 def index():
     if 'user_id' not in session:
@@ -692,13 +717,52 @@ def index():
     conn.close()
     return render_template_string(INDEX_HTML, username=user[0] if user else None)
 
-
 @app.route('/settings')
 def settings_page():
     if 'user_id' not in session:
         return redirect('/')
     return render_template_string(SETTINGS_HTML, username=None)
 
+@app.route('/api/notifications')
+def api_notifications():
+    if 'user_id' not in session:
+        return jsonify({'unread_messages': 0, 'unread_requests': 0})
+    conn = sqlite3.connect('social.db')
+    c = conn.cursor()
+    c.execute("SELECT username FROM users WHERE id = ?", (session['user_id'],))
+    current_user = c.fetchone()[0]
+    c.execute("SELECT COUNT(*) FROM messages WHERE to_user = ? AND read = 0", (current_user,))
+    unread_messages = c.fetchone()[0]
+    c.execute("SELECT COUNT(*) FROM friend_requests WHERE to_user = ? AND status = 'pending' AND read = 0", (current_user,))
+    unread_requests = c.fetchone()[0]
+    conn.close()
+    return jsonify({'unread_messages': unread_messages, 'unread_requests': unread_requests})
+
+@app.route('/api/mark_messages_read', methods=['POST'])
+def api_mark_messages_read():
+    if 'user_id' not in session:
+        return jsonify({'error': 'Unauthorized'}), 401
+    conn = sqlite3.connect('social.db')
+    c = conn.cursor()
+    c.execute("SELECT username FROM users WHERE id = ?", (session['user_id'],))
+    current_user = c.fetchone()[0]
+    c.execute("UPDATE messages SET read = 1 WHERE to_user = ?", (current_user,))
+    conn.commit()
+    conn.close()
+    return jsonify({'success': True})
+
+@app.route('/api/mark_requests_read', methods=['POST'])
+def api_mark_requests_read():
+    if 'user_id' not in session:
+        return jsonify({'error': 'Unauthorized'}), 401
+    conn = sqlite3.connect('social.db')
+    c = conn.cursor()
+    c.execute("SELECT username FROM users WHERE id = ?", (session['user_id'],))
+    current_user = c.fetchone()[0]
+    c.execute("UPDATE friend_requests SET read = 1 WHERE to_user = ?", (current_user,))
+    conn.commit()
+    conn.close()
+    return jsonify({'success': True})
 
 @app.route('/api/login', methods=['POST'])
 def api_login():
@@ -714,7 +778,6 @@ def api_login():
         session['user_id'] = user[0]
         return jsonify({'success': True})
     return jsonify({'success': False, 'error': 'Невірний нікнейм або пароль'})
-
 
 @app.route('/api/register', methods=['POST'])
 def api_register():
@@ -736,12 +799,10 @@ def api_register():
     finally:
         conn.close()
 
-
 @app.route('/api/logout')
 def api_logout():
     session.clear()
     return jsonify({'success': True})
-
 
 @app.route('/api/user_info')
 def api_user_info():
@@ -753,7 +814,6 @@ def api_user_info():
     user = c.fetchone()
     conn.close()
     return jsonify({'username': user[0], 'avatar': user[1]})
-
 
 @app.route('/api/update_username', methods=['POST'])
 def api_update_username():
@@ -775,7 +835,6 @@ def api_update_username():
         conn.close()
         return jsonify({'error': 'Нікнейм вже зайнятий'}), 400
 
-
 @app.route('/api/upload_avatar', methods=['POST'])
 def api_upload_avatar():
     if 'user_id' not in session:
@@ -796,12 +855,10 @@ def api_upload_avatar():
     conn.close()
     return jsonify({'url': avatar_url})
 
-
 @app.route('/avatars/<filename>')
 def serve_avatar(filename):
     from flask import send_from_directory
     return send_from_directory('avatars', filename)
-
 
 @app.route('/api/post', methods=['POST'])
 def api_post():
@@ -821,7 +878,6 @@ def api_post():
     conn.close()
     return jsonify({'success': True})
 
-
 @app.route('/api/delete_post', methods=['POST'])
 def api_delete_post():
     if 'user_id' not in session:
@@ -835,7 +891,6 @@ def api_delete_post():
     conn.close()
     return jsonify({'success': True})
 
-
 @app.route('/api/feed')
 def api_feed():
     conn = sqlite3.connect('social.db')
@@ -844,7 +899,6 @@ def api_feed():
     posts = [{"id": row[0], "username": row[1], "content": row[2], "date": row[3]} for row in c.fetchall()]
     conn.close()
     return jsonify(posts)
-
 
 @app.route('/api/friends')
 def api_friends():
@@ -861,7 +915,6 @@ def api_friends():
     conn.close()
     return jsonify(friends)
 
-
 @app.route('/api/friend_requests')
 def api_friend_requests():
     if 'user_id' not in session:
@@ -875,7 +928,6 @@ def api_friend_requests():
     conn.close()
     return jsonify(reqs)
 
-
 @app.route('/api/send_request', methods=['POST'])
 def api_send_request():
     if 'user_id' not in session:
@@ -887,13 +939,12 @@ def api_send_request():
     c.execute("SELECT username FROM users WHERE id = ?", (session['user_id'],))
     from_user = c.fetchone()[0]
     try:
-        c.execute("INSERT INTO friend_requests (from_user, to_user) VALUES (?, ?)", (from_user, to_user))
+        c.execute("INSERT INTO friend_requests (from_user, to_user, read) VALUES (?, ?, 0)", (from_user, to_user))
         conn.commit()
     except:
         pass
     conn.close()
     return jsonify({'success': True})
-
 
 @app.route('/api/accept_request', methods=['POST'])
 def api_accept_request():
@@ -911,7 +962,6 @@ def api_accept_request():
     conn.close()
     return jsonify({'success': True})
 
-
 @app.route('/api/reject_request', methods=['POST'])
 def api_reject_request():
     if 'user_id' not in session:
@@ -927,7 +977,6 @@ def api_reject_request():
     conn.close()
     return jsonify({'success': True})
 
-
 @app.route('/api/send', methods=['POST'])
 def api_send():
     if 'user_id' not in session:
@@ -939,12 +988,11 @@ def api_send():
     c = conn.cursor()
     c.execute("SELECT username FROM users WHERE id = ?", (session['user_id'],))
     from_user = c.fetchone()[0]
-    c.execute("INSERT INTO messages (from_user, to_user, message, created_at) VALUES (?, ?, ?, ?)",
+    c.execute("INSERT INTO messages (from_user, to_user, message, created_at, read) VALUES (?, ?, ?, ?, 0)",
               (from_user, to_user, message, datetime.now().strftime("%Y-%m-%d %H:%M:%S")))
     conn.commit()
     conn.close()
     return jsonify({'success': True})
-
 
 @app.route('/api/messages/<username>')
 def api_messages(username):
@@ -961,7 +1009,6 @@ def api_messages(username):
     msgs = [{"from": row[0], "message": row[1], "time": row[2]} for row in c.fetchall()]
     conn.close()
     return jsonify(msgs)
-
 
 if __name__ == '__main__':
     os.makedirs('avatars', exist_ok=True)
