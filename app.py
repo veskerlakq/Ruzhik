@@ -57,13 +57,13 @@ def init_db():
 init_db()
 
 # Создаем дефолтную аватарку если нет
-if not os.path.exists('avatars/default.png'):
-    from PIL import Image, ImageDraw
+#if not os.path.exists('avatars/default.png'):
+#    from PIL import Image, ImageDraw
 
-    img = Image.new('RGB', (80, 80), color='#667eea')
-    draw = ImageDraw.Draw(img)
-    draw.text((25, 25), '🐹', fill='white')
-    img.save('avatars/default.png')
+#    img = Image.new('RGB', (80, 80), color='#667eea')
+#    draw = ImageDraw.Draw(img)
+#    draw.text((25, 25), '🐹', fill='white')
+#    img.save('avatars/default.png')
 
 # ========== HTML ==========
 AUTH_HTML = '''
